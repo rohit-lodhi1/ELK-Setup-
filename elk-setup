@@ -1,0 +1,184 @@
+           ***** START ELK Installation *****
+
+
+ -> Install elk from https://www.elastic.co/downloads
+ -> Install :
+              - ElasticSearch
+              - Kibana
+              - Logstash
+
+           ***** ELK Installation END *****
+
+
+           ***** RUN Elastic Search  START *****
+
+-> Go to bin directory of elasticsearch
+
+         - disable security from config file
+         - open config folder present inside root directory of elasticSearch
+         - mark all true as false
+         - Run elasticsearch.bat
+         - open chrome , hit http://localhost:9200
+           - a json should appear.
+
+          *****  RUN Elastic Search  END *****
+
+          *****  RUN Kibana  START ******
+-> Go to bin directory of kibana
+   - run kibana.bat file
+   - open chrome , hit http://localhost:5601
+       UI should appear.
+
+          *****  RUN Kibana  END ******
+
+          *****  RUN Logstash  START ******
+-> Go to bin directory of kibana
+    - we have to add some config for logstash
+     - open config folder present inside root directory of logstash
+     - make a file logstash.conf
+   
+         *****  RUN Logstash  END ******
+
+			             --- Start of logstash.conf ---
+			   	input{
+
+				 tcp {
+				        port => "5000"
+				        type => syslog
+				        codec => json_lines
+				    }
+					 file{
+
+					    path => "C:\sts-4.17.1.RELEASE\MicroServices\Distrubuted Transaction\OrderService\logs\application.log"    # path of the log file where logs will be stored
+					    start_position => "beginning"
+					 }
+				}
+
+				output{
+					
+					stdout { codec => json }
+
+					elasticsearch {
+					  hosts => ["localhost:9200"]
+					  index => "springbootapplog"
+					}
+				}
+
+
+
+	    --- End of logstash.conf   ----
+
+	- copy the above code in logstash.conf file
+	- go to bin folder and open cmd.
+	- inside bin directory , run cmd [ logstash.bat -f .\config\logstash.conf ]
+    - open chrome , hit http://localhost:9600
+           - a json should appear.
+
+
+      ***** Connect Spring boot application to logstash START *****
+
+  -Add a dependency in pom.xml based on the logger you are using
+    i'm using sl4j so i added the below dependency
+
+     <dependency>
+       <groupId>net.logstash.logback</groupId>
+       <artifactId>logstash-logback-encoder</artifactId>
+       <version>6.6</version> <!-- Latest version as of writing -->
+     </dependency>
+
+
+   ** Note ** - I will add the youtube video links below for this whole elk setup with spring boot   application where setup for both log4j and sl4j is used .so chill mar.
+
+  - now in the src/main/resource folder of application make a logback-spring.xml file
+    paste the config in file
+
+    --- Start of logback-spring.xml file -----
+
+    <?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Define the properties for Logstash host and port -->
+    <property name="LOGSTASH_HOST" value="localhost" />
+    <property name="LOGSTASH_PORT" value="5000" />
+    
+    <!-- Logstash Appender -->
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${LOGSTASH_HOST}:${LOGSTASH_PORT}</destination>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+    </appender>
+
+    <!-- Console Appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender -->		
+    <appender name="SAVE-TO-FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/application.log</file>    <!-- Path where logs will stored -->
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{36}.%M - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Logger Configuration -->
+    <logger name="com.jts" additivity="false" level="info">
+        <appender-ref ref="SAVE-TO-FILE"/>
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="LOGSTASH"/> <!-- Add Logstash appender reference here -->
+    </logger>
+
+    <!-- Root Logger Configuration -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="LOGSTASH"/> <!-- Add Logstash appender reference here -->
+    </root>
+</configuration>
+
+  ----- ENd of logback-spring.xml file  ------   
+
+  - make a log folder in root folder of application on same path where src folder is present.
+  - make a file application.log inside the log folder.
+  - start the application and be happy .
+
+        ***** Connect Spring boot application to logstash END *****
+
+
+
+  if any issues occurs please google them. you will easily solve them by stack overflow.
+
+
+
+** LINKS **
+
+--Video 1--
+
+  Title :-Kibana Setup For Spring Boot Application: Setup ELK Stack for Spring Boot | Kibana Log Monitoring
+  Link: - https://www.youtube.com/watch?v=okYwBHGy5hU&t=588s
+
+-- Video 2 --
+	Title : - ELK Stack with Spring Boot Logs | Log Kibana and ES | Logstash and ELK Stack in Spring Boot
+	Link: - https://www.youtube.com/watch?v=xG9i7O4v0nI&t=1126s
+
+
+ ** Links Visited for error solving **
+
+ Link 1 - https://stackoverflow.com/questions/57399354/send-spring-boot-logs-directly-to-logstash-with-no-file
+
+ Link 2 -  https://salithachathuranga94.medium.com/integrate-elk-stack-into-spring-boot-application-ae38a6371f86
+
+ Link 3 - https://discuss.elastic.co/t/logstash-stopped-processing-because-of-an-error-systemexit-exit/275744/11
+
+ Link 4 - https://stackoverflow.com/questions/66370454/error-logstash-stopped-processing-because-of-an-error-systemexit-exit
+
+ Link 5 - https://stackoverflow.com/questions/71492404/elasticsearch-showing-received-plaintext-http-traffic-on-an-https-channel-in-con
+
+ Link 6 - https://chat.openai.com/share/3e2948f8-e43b-4ec4-b756-099b894c3f78
+
+
+
+
+
+
+
+
